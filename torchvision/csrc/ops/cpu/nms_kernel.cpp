@@ -36,16 +36,16 @@ at::Tensor nms_kernel_impl(
 
   auto suppressed = suppressed_t.data_ptr<uint8_t>();
   auto keep = keep_t.data_ptr<int64_t>();
-  auto order = order_t.data_ptr<int64_t>();
-  auto x1 = x1_t.data_ptr<scalar_t>();
-  auto y1 = y1_t.data_ptr<scalar_t>();
-  auto x2 = x2_t.data_ptr<scalar_t>();
-  auto y2 = y2_t.data_ptr<scalar_t>();
-  auto areas = areas_t.data_ptr<scalar_t>();
+  auto order = order_t.data_ptr<int64_t>();  //从大到小排列的置信度分数
+  auto x1 = x1_t.data_ptr<scalar_t>();  //左上角横坐标
+  auto y1 = y1_t.data_ptr<scalar_t>();  //左上角纵坐标
+  auto x2 = x2_t.data_ptr<scalar_t>();  //右下角横坐标
+  auto y2 = y2_t.data_ptr<scalar_t>();  //右下角纵坐标
+  auto areas = areas_t.data_ptr<scalar_t>();  //预测框面积
 
   int64_t num_to_keep = 0;
 
-  for (int64_t _i = 0; _i < ndets; _i++) {
+  for (int64_t _i = 0; _i < ndets; _i++) {  //遍历所有预测框
     auto i = order[_i];
     if (suppressed[i] == 1)
       continue;
