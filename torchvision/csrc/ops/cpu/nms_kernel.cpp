@@ -28,15 +28,15 @@ at::Tensor nms_kernel_impl(
   at::Tensor areas_t = (x2_t - x1_t) * (y2_t - y1_t);
 
   auto order_t = std::get<1>(
-      scores.sort(/*stable=*/true, /*dim=*/0, /* descending=*/true));
+      scores.sort(/*stable=*/true, /*dim=*/0, /* descending=*/true));  //将置信度分数按照从大到小的顺序排列，返回scores中相应的下标索引
 
-  auto ndets = dets.size(0);
-  at::Tensor suppressed_t = at::zeros({ndets}, dets.options().dtype(at::kByte));
-  at::Tensor keep_t = at::zeros({ndets}, dets.options().dtype(at::kLong));
+  auto ndets = dets.size(0);  //预测框数量
+  at::Tensor suppressed_t = at::zeros({ndets}, dets.options().dtype(at::kByte));  //初始化
+  at::Tensor keep_t = at::zeros({ndets}, dets.options().dtype(at::kLong));  //初始化
 
-  auto suppressed = suppressed_t.data_ptr<uint8_t>();
+  auto suppressed = suppressed_t.data_ptr<uint8_t>();  //被舍弃的预测框
   auto keep = keep_t.data_ptr<int64_t>();
-  auto order = order_t.data_ptr<int64_t>();  //从大到小排列的置信度分数
+  auto order = order_t.data_ptr<int64_t>();  //置信度分数从大到小排列的列表索引
   auto x1 = x1_t.data_ptr<scalar_t>();  //左上角横坐标
   auto y1 = y1_t.data_ptr<scalar_t>();  //左上角纵坐标
   auto x2 = x2_t.data_ptr<scalar_t>();  //右下角横坐标
@@ -45,20 +45,20 @@ at::Tensor nms_kernel_impl(
 
   int64_t num_to_keep = 0;
 
-  for (int64_t _i = 0; _i < ndets; _i++) {  //遍历所有预测框
-    auto i = order[_i];
-    if (suppressed[i] == 1)
+  for (int64_t _i = 0; _i < ndets; _i++) {  //按照置信度分数从大到小的顺序，遍历所有预测框
+    auto i = order[_i];  //按照置信度分数从大到小的顺序，获取第_i个scores的下标
+    if (suppressed[i] == 1)  //如果这个预测框已经被舍弃，则进行下一个预测框
       continue;
     keep[num_to_keep++] = i;
-    auto ix1 = x1[i];
-    auto iy1 = y1[i];
-    auto ix2 = x2[i];
-    auto iy2 = y2[i];
-    auto iarea = areas[i];
+    auto ix1 = x1[i];  //该预测框左上角横坐标
+    auto iy1 = y1[i];  //该预测框左上角纵坐标
+    auto ix2 = x2[i];  //该预测框右下角横坐标
+    auto iy2 = y2[i];  //该预测框右下角纵坐标
+    auto iarea = areas[i];  //该预测框面积
 
-    for (int64_t _j = _i + 1; _j < ndets; _j++) {
+    for (int64_t _j = _i + 1; _j < ndets; _j++) {  //将该预测框与剩余预测框对比
       auto j = order[_j];
-      if (suppressed[j] == 1)
+      if (suppressed[j] == 1)  //如果这个预测框已经被舍弃，则进行下一个预测框
         continue;
       auto xx1 = std::max(ix1, x1[j]);
       auto yy1 = std::max(iy1, y1[j]);
@@ -67,9 +67,9 @@ at::Tensor nms_kernel_impl(
 
       auto w = std::max(static_cast<scalar_t>(0), xx2 - xx1);
       auto h = std::max(static_cast<scalar_t>(0), yy2 - yy1);
-      auto inter = w * h;
-      auto ovr = inter / (iarea + areas[j] - inter);
-      if (ovr > iou_threshold)
+      auto inter = w * h;  // 两个预测框的交集面积
+      auto ovr = inter / (iarea + areas[j] - inter);  // iou交并比
+      if (ovr > iou_threshold)  //如果iou大于阈值，则将预测框舍弃
         suppressed[j] = 1;
     }
   }
